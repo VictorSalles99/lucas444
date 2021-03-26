@@ -2,9 +2,8 @@ import User from '../models/User.js';
 import Animais from '../models/Animais';
 import Relation from '../models/Relation';
 import * as Yup from 'yup';
-
-import * as convert from 'json-2-csv';
-
+import * as moment from 'moment'
+const ObjectsToCsv = require('objects-to-csv');
 
 class RelatorioController {
   async store(req, res) {
@@ -14,43 +13,54 @@ class RelatorioController {
       final: Yup.date().required(),
     });
 
-    if (!(await schema.isValid(req.query))) {
-      return res.status(400).json({ error: 'Validation fails' });
-    }
+    // if (!(await schema.isValid(req.query))) {
+    // return res.status(400).json({ error: 'Validation fails' });
+    // }
 
-    const result = await Relation.findAll({
-      
+    let dataModify = [];
+    let month = ['Janeiro',
+      'Fevereiro',
+      'Marco',
+      'Abril',
+      'Maio',
+      'Junho',
+      'Julho',
+      'Agosto',
+      'Setembro',
+      'Outubro',
+      'Novembro',
+      'Dezembro'
+    ]
+    await Relation.findAll({
       include: [{
-        model: User,
-        attributes: [
-          'name'
-        ]
-      },
-      {
-        model: Animais,
-        attributes: [
-          'name_animal'
-        ]
+        model: User
+      }, {
+        model: Animais
       }],
-    })
-    var teste = [];
+    }).then(
+      function (rel) {
+        dataModify = rel.map(element => {
+          return {
+            idRelation: element.dataValues.id,
+            date: element.dataValues.createdAt,
+            userNome: element.User.dataValues.name,
+            animaisNome: element.Animai.dataValues.name_animal,
+            animaisRaca: element.Animai.dataValues.raca_animal
+          }
+        });
+      },
+      function (err) {
+        console.log(err);
+      }
+    );
 
-    [ 'User', 'Animai' ].forEach(element => {  
-      teste = result.map(e =>  { return{ nome: e.dataValues[element].dataValues.name }} )
-    });
-
-    console.log(teste);
-    // const dataFormat = result.map(e => (e))
-
-    // convert.json2csv(resultParseJson,(erro,csv) => {
-    //   if(erro){
-    //     console.log(erro)
-    //   }else{
-    //     console.log(csv)
-    //   }
-    // });
+    const csv = new ObjectsToCsv(dataModify);
+    (async () => {
+      let dirName = `./src/files/profile-${Math.random()}.csv`
+      await csv.toDisk(dirName);
+      return res.json({fileLocale: dirName})
+    })();
   }
-
 
 }
 
